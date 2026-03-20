@@ -24,6 +24,9 @@ tracing-subscriber.workspace = true
 # Process management
 duct.workspace = true
 
+# TOML parsing (used by release-check)
+toml.workspace = true
+
 [dev-dependencies]
 # Testing utilities
 assert_cmd = "2.1"

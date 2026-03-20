@@ -1,3 +1,8 @@
+![CI](https://github.com/USERNAME/REPO/actions/workflows/ci.yml/badge.svg)
+[![Crates.io](https://img.shields.io/crates/v/CRATE_NAME.svg)](https://crates.io/crates/CRATE_NAME)
+[![Docs.rs](https://docs.rs/CRATE_NAME/badge.svg)](https://docs.rs/CRATE_NAME)
+[![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](LICENSE-MIT)
+
 # Rust Dev Template
 
 Complete Rust development environment with all essential tools integrated.

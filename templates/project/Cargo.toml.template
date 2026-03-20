@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "{{project_description}}"
 authors = ["Erwan Patrick Legrand <github@erwanlegrand.com>"]
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0 OR MIT"
 repository = "{{repository_url}}"
 keywords = ["rust"]
 categories = ["rust-patterns"]
@@ -14,7 +14,7 @@ readme = "README.md"
 
 [dependencies]
 # Error handling
-thiserror = "1.0"
+thiserror = "2.0"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

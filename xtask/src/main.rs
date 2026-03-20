@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Erwan Patrick Legrand
 
 use clap::{Parser, Subcommand};
-use std::process;
+use std::process::{self, Command};
 
 mod build;
 mod ci;
@@ -52,6 +52,8 @@ enum Commands {
     Setup,
     /// Run comprehensive checks (format, lint, test)
     Check,
+    /// Pre-release verification (dry-run publish, doc warnings, metadata)
+    ReleaseCheck,
 }
 
 #[tokio::main]
@@ -80,11 +82,82 @@ async fn main() {
         Commands::Outdated => build::run_outdated(),
         Commands::Setup => run_setup(),
         Commands::Check => run_check(),
+        Commands::ReleaseCheck => run_release_check(),
     };
 
     if let Err(e) = result {
         eprintln!("Error: {e}");
         process::exit(1);
+    }
+}
+
+fn run_release_check() -> anyhow::Result<()> {
+    println!("Running pre-release checks...");
+
+    // 1. cargo publish --dry-run
+    println!("release-check: cargo publish --dry-run");
+    let status = Command::new("cargo")
+        .args(["publish", "--dry-run"])
+        .status()
+        .map_err(|e| anyhow::anyhow!("failed to launch cargo publish: {e}"))?;
+    if !status.success() {
+        anyhow::bail!("cargo publish --dry-run failed (exit {status})");
+    }
+    println!("release-check: publish dry-run passed");
+
+    // 2. cargo doc --no-deps with warnings denied
+    println!("release-check: cargo doc --no-deps (warnings denied)");
+    let status = Command::new("cargo")
+        .args(["doc", "--no-deps"])
+        .env("RUSTDOCFLAGS", "-D warnings")
+        .status()
+        .map_err(|e| anyhow::anyhow!("failed to launch cargo doc: {e}"))?;
+    if !status.success() {
+        anyhow::bail!("cargo doc with -D warnings failed (exit {status})");
+    }
+    println!("release-check: documentation passed");
+
+    // 3. Verify required Cargo.toml fields
+    println!("release-check: verifying Cargo.toml metadata");
+    verify_cargo_toml_metadata()?;
+    println!("release-check: metadata check passed");
+
+    println!("All pre-release checks passed!");
+    Ok(())
+}
+
+fn verify_cargo_toml_metadata() -> anyhow::Result<()> {
+    let content = std::fs::read_to_string("Cargo.toml")
+        .map_err(|e| anyhow::anyhow!("could not read Cargo.toml: {e}"))?;
+
+    let doc: toml::Value =
+        toml::from_str(&content).map_err(|e| anyhow::anyhow!("invalid Cargo.toml: {e}"))?;
+
+    let package = doc
+        .get("package")
+        .ok_or_else(|| anyhow::anyhow!("Cargo.toml missing [package] table"))?;
+
+    let required_fields = ["license", "description", "repository"];
+    let mut missing = Vec::new();
+
+    for field in &required_fields {
+        let value = package.get(field);
+        match value {
+            // Field present and is a plain string
+            Some(toml::Value::String(s)) if !s.is_empty() => {}
+            // Field present as a table (e.g. { workspace = true }) -- acceptable
+            Some(toml::Value::Table(_)) => {}
+            _ => missing.push(*field),
+        }
+    }
+
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "Cargo.toml missing required fields for publishing: {}",
+            missing.join(", ")
+        )
     }
 }
 
